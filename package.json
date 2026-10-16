@@ -1,0 +1,31 @@
+{
+  "name": "smartcart-ai",
+  "version": "1.0.0",
+  "description": "SmartCart AI - Modern AI-Powered Multi-Vendor E-Commerce Marketplace",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,magenta\" \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "server": "npm run dev --workspace=server",
+    "client": "npm run dev --workspace=client",
+    "build": "npm run build --workspace=client",
+    "test": "npm run test --workspace=server && npm run test --workspace=client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "keywords": [
+    "e-commerce",
+    "multi-vendor",
+    "marketplace",
+    "ai-recommendations",
+    "react",
+    "express",
+    "mongodb"
+  ],
+  "author": "anurps07",
+  "license": "MIT"
+}
