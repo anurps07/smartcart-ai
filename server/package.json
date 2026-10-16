@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed": "node src/seeds/seed.js",
+    "bootstrap:admin": "node src/seeds/bootstrapAdmin.js",
     "test": "vitest run"
   },
   "dependencies": {

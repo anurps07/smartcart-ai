@@ -4,9 +4,9 @@
 
 | Phase | Description | Status | Verification Result |
 | :--- | :--- | :--- | :--- |
-| **Phase 1** | Workspace, project structure, frontend & backend startup | **COMPLETED** | Verified (All 5 tests passing, build clean, git committed) |
-| **Phase 2** | MongoDB connection, models & seed data | **Pending** | Planned next |
-| **Phase 3** | Authentication, sessions & roles (RBAC) | Pending | Planned |
+| **Phase 1** | Workspace, project structure, frontend & backend startup | **COMPLETED** | Verified (5/5 tests passing, production build clean, Git committed & pushed) |
+| **Phase 2** | MongoDB connection, models & seed data | **COMPLETED** | Verified (11/11 tests passing, DB seeded, Admin CLI verified, Git pushed) |
+| **Phase 3** | Authentication, sessions & roles (RBAC) | **Pending** | Planned next |
 | **Phase 4** | Vendor applications & admin approval queue | Pending | Planned |
 | **Phase 5** | Product catalog, media upload & faceted search | Pending | Planned |
 | **Phase 6** | Cart, wishlist & shipping addresses | Pending | Planned |
@@ -20,62 +20,56 @@
 
 ---
 
-## Phase 1 Execution & Verification Summary
+## Phase 2 Execution & Verification Summary
 
-### 1. Workspace Configuration
-- **Location**: `C:\Users\91943\.gemini\antigravity\scratch\smartcart-ai`
-- **Node.js**: `v22.14.0`
-- **npm**: `10.9.2`
-- **Git**: `2.48.1.windows.1`
-- **MongoDB**: `v8.2.2` (Verified running locally on port 27017)
+### 1. Database Schemas Implemented
+- **Financial Precision Standard**: All monetary values (`price`, `originalPrice`, `subtotal`, `taxAmount`, `shippingFee`, `totalAmount`, `commissionAmount`, `vendorPayout`, `refundAmount`) are strictly enforced as **integer paise** (1 INR = 100 paise) with Mongoose integer validators to eliminate floating-point rounding errors.
+- **13 Mongoose Models Created in `server/src/models/`**:
+  1. `User.js` - Name, normalized lowercase email, bcrypt `passwordHash`, role (`buyer`, `vendor`, `admin`), active status, `comparePassword()` method.
+  2. `Vendor.js` - `userId`, unique `storeName`, `slug`, description, contact info, `approvalStatus` (`pending`, `approved`, `rejected`, `suspended`), `commissionRate`.
+  3. `Category.js` - Category name, unique `slug`, description, Lucide icon name, display order.
+  4. `Product.js` - `vendorId`, `categoryId`, name, unique `slug`, description, integer paise `price`, `stock`, `images`, specifications array, text index (`name`, `tags`, `description`), and compound indexes for faceted search.
+  5. `Cart.js` - Unique `buyerId`, validated items array with minimum quantity 1.
+  6. `Wishlist.js` - Unique `buyerId` referencing array of products.
+  7. `Address.js` - Recipient, phone, street, city, state, postalCode, country, `isDefault` flag.
+  8. `Order.js` - Multi-vendor order design:
+     - Parent order for buyer with global status and integer paise totals.
+     - Segregated `vendorSubOrders` array with purchase-time item snapshots, vendor commission calculation, vendor payout, and fulfillment status history.
+  9. `Payment.js` - Gateway order ID, payment ID, signature, integer paise amount, verification data snapshot.
+  10. `Review.js` - Verified purchase review linked to `buyerId`, `productId`, and `orderId`, integer ratings (1–5).
+  11. `Notification.js` - In-app notification with recipient ID, event type, and read tracking.
+  12. `PriceAlert.js` - Target price drop notifications with unique buyer/product constraint.
+  13. `AuditLog.js` - Immutable audit log for sensitive administrator and platform events.
 
-### 2. Files Created
-- `IMPLEMENTATION_PLAN.md` - Complete 13-phase master architecture blueprint.
-- `PROGRESS.md` - Real-time milestone tracker.
-- `README.md` - Documentation with startup and testing guides.
-- `.gitignore` - Security rules ignoring `node_modules`, `.env`, builds, and logs.
-- `.env.example` - Reference environment variables across root, server, and client.
-- `package.json` - Root workspace orchestration with concurrent runner.
-- **Server**:
-  - `server/package.json` - Express, Helmet, CORS, Rate Limit, Mongoose, Zod, Vitest, Supertest.
-  - `server/.env` & `server/.env.example` - Configured for local dev & MongoDB.
-  - `server/src/app.js` - Express app, security middleware, health endpoint, error handling.
-  - `server/src/server.js` - HTTP & Socket.IO server with graceful shutdown.
-  - `server/src/config/env.js` - Environment loader.
-  - `server/src/config/db.js` - MongoDB Mongoose connection manager.
-  - `server/src/middleware/errorHandler.js` - Centralized error and 404 handlers.
-  - `server/tests/health.test.js` - Automated integration tests for `/api/health` and 404 handling.
-- **Client**:
-  - `client/package.json` - React 18, Vite, Tailwind CSS, Lucide React, Axios, Vitest.
-  - `client/vite.config.js` - Vite configuration with `/api` proxy to port 5000.
-  - `client/tailwind.config.js` & `client/postcss.config.js` - Tailwind design system.
-  - `client/index.html` - App shell with custom font and favicon.
-  - `client/src/index.css` - Tailwind CSS directives.
-  - `client/src/api/client.js` - Axios instance with interceptors.
-  - `client/src/App.jsx` - Interactive diagnostic UI and roadmap viewer.
-  - `client/src/main.jsx` - React root mounting.
-  - `client/src/tests/setup.js` & `client/src/tests/App.test.jsx` - Frontend UI unit tests.
+### 2. Seeds & Admin Bootstrap Scripts
+- `server/src/seeds/seed.js`: Clears and populates 5 realistic categories, 4 vendors (3 approved, 1 pending), 8 rich products with specifications and image URLs, saved addresses, carts, and wishlists.
+- `server/src/seeds/bootstrapAdmin.js`: Secure CLI-only administrator bootstrap protected by `ADMIN_BOOTSTRAP_SECRET`.
 
 ### 3. Verification Commands Executed & Results
-- **Root Test Suite**:
+- **Database Seeding**:
+  ```bash
+  npm run seed
+  ```
+  - Result: Seeded 8 products across 5 categories, 3 approved vendors, 1 pending vendor, demo buyer, and demo vendor.
+- **Admin Bootstrap CLI**:
+  ```bash
+  npm run bootstrap:admin
+  ```
+  - Result: Successfully created/updated `admin@smartcart.com` with role `admin` and audit log entry.
+- **Automated Tests**:
   ```bash
   npm test
   ```
   - `server/tests/health.test.js` (3 tests passed)
+  - `server/tests/models.test.js` (6 tests passed)
   - `client/src/tests/App.test.jsx` (2 tests passed)
-  - Result: **5/5 tests passed** (Exit code 0).
-- **Client Production Build**:
-  ```bash
-  npm run build
-  ```
-  - Vite generated optimized bundle (1644 modules transformed, 7.18s, Exit code 0).
-- **Git Commit**:
-  - Initialized repository on branch `main`.
-  - Configured remote origin: `https://github.com/anurps07/smartcart-ai.git`.
-  - Commit `1996dd1`: `feat: phase 1 - workspace, monorepo structure, express rest backend, react vite frontend, and test suite` (26 files, 7,616 insertions).
+  - Result: **11/11 Automated Tests Passed** (Exit code 0).
 
-### 4. Remaining External Dependencies / Credentials for Future Phases
-- **GitHub Remote Repository**: The remote repository `https://github.com/anurps07/smartcart-ai` must be created on GitHub so the local commit can be pushed.
-- **Razorpay (Phase 8)**: Test mode Key ID and Key Secret.
-- **Cloudinary (Phase 5)**: Optional Cloudinary credentials (local uploads fallback ready).
-- **LLM API Key (Phase 10)**: Optional Gemini/OpenAI API key (deterministic catalog fallback ready).
+---
+
+## Phase 3 Scope (Next Up)
+- Authentication router and controllers (`/api/auth/register`, `/api/auth/login`, `/api/auth/me`, `/api/auth/logout`).
+- JWT token signing, verification, and cookie/bearer authorization middleware.
+- Role-based authorization middleware (`requireAuth`, `requireRole('vendor')`, `requireRole('admin')`).
+- Zod request validation schemas for authentication.
+- Automated auth tests (duplicate registration, invalid password, token expiry, role guards).
