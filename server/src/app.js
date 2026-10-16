@@ -8,6 +8,8 @@ import { env } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 import authRoutes from './routes/authRoutes.js';
+import vendorRoutes from './routes/vendorRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 const app = express();
 
@@ -73,6 +75,12 @@ app.get('/api/health', (req, res) => {
 
 // Authentication Routes
 app.use('/api/auth', authRoutes);
+
+// Vendor & Store Routes
+app.use('/api/vendors', vendorRoutes);
+
+// Admin Routes
+app.use('/api/admin', adminRoutes);
 
 // Root welcome
 app.get('/', (req, res) => {

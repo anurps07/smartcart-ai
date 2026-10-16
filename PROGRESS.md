@@ -7,8 +7,8 @@
 | **Phase 1** | Workspace, project structure, frontend & backend startup | **COMPLETED** | Verified (5/5 tests passing, production build clean, Git committed & pushed) |
 | **Phase 2** | MongoDB connection, models & seed data | **COMPLETED** | Verified (11/11 tests passing, DB seeded, Admin CLI verified, Git pushed) |
 | **Phase 3** | Authentication, sessions & roles (RBAC) | **COMPLETED** | Verified (19/19 tests passing, login/register UI live, Git pushed) |
-| **Phase 4** | Vendor applications & admin approval queue | **Pending** | Planned next |
-| **Phase 5** | Product catalog, media upload & faceted search | Pending | Planned |
+| **Phase 4** | Vendor applications & admin approval queue | **COMPLETED** | Verified (28/28 tests passing, approval workflow & audit logs live, Git pushed) |
+| **Phase 5** | Product catalog, media upload & faceted search | **Pending** | Planned next |
 | **Phase 6** | Cart, wishlist & shipping addresses | Pending | Planned |
 | **Phase 7** | Inventory-safe checkout & multi-vendor orders | Pending | Planned |
 | **Phase 8** | Razorpay test payment integration & webhooks | Pending | Planned |
@@ -20,30 +20,27 @@
 
 ---
 
-## Phase 3 Execution & Verification Summary
+## Phase 4 Execution & Verification Summary
 
 ### 1. Modules Implemented
-- **Backend Auth Architecture**:
-  - `server/src/utils/token.js`: Secure JWT signing (`signToken`), verification (`verifyToken`), and cookie strategy (`setAuthCookie` with `httpOnly`, `sameSite`, and production `secure` flags).
-  - `server/src/validations/authValidation.js`: Strict Zod request schemas. Restricts public self-registration to `buyer` and `vendor` only (strictly rejects any attempt to self-assign `admin` role).
-  - `server/src/middleware/auth.js`:
-    - `requireAuth`: Header Bearer or HttpOnly cookie token extraction, user validation, account active check, attached `req.user` & `req.vendor`.
-    - `requireRole(...roles)`: Role-based authorization guard returning 403 with detailed message.
-    - `requireVendorApproved`: Guard ensuring vendor store exists and `approvalStatus === 'approved'`.
-    - `optionalAuth`: Graceful authentication for public browsing.
-  - `server/src/controllers/authController.js`:
-    - `register`: Validates duplicate email, hashes with bcrypt (10 rounds), creates linked pending `Vendor` profile if vendor selected, signs JWT, logs vendor application audit event.
-    - `login`: Password verification with `user.comparePassword()`, updates `lastLogin`, generates JWT and returns safe user object.
-    - `getMe`: Returns authenticated user profile and vendor store.
-    - `logout`: Clears authentication cookie.
-    - `updateProfile`: Allows name and password changes with current password verification.
-  - `server/src/routes/authRoutes.js`: Mounted at `/api/auth`.
-- **Frontend Auth Integration**:
-  - `client/src/context/AuthContext.jsx`: Global authentication provider with session restoration from localStorage and `/api/auth/me`.
-  - `client/src/components/common/ProtectedRoute.jsx`: Role-aware and vendor-approval-aware route guard.
-  - `client/src/pages/public/Login.jsx`: Modern sign-in page with quick 1-click demo switcher for Admin (`admin@smartcart.com`), Vendor (`techworld@smartcart.com`), and Buyer (`buyer@smartcart.com`).
-  - `client/src/pages/public/Register.jsx`: Interactive registration with buyer/vendor role selection and instant validation.
-  - `client/src/App.jsx`: Updated with React Router, AuthProvider, and top navigation reflecting live session states.
+- **Vendor Workflows (`server/src/controllers/vendorController.js`)**:
+  - `POST /api/vendors/apply`: Allows customer/buyer accounts to submit a merchant application with unique slug generation and role upgrade.
+  - `GET /api/vendors/my-store`: Retrieves store details, verification status, and product count for the authenticated vendor.
+  - `PUT /api/vendors/my-store`: Updates store profile information with store name uniqueness checks.
+  - `GET /api/vendors`: Public endpoint returning approved marketplace merchants.
+  - `GET /api/vendors/store/:slug`: Public merchant showcase returning store profile and active catalog.
+- **Admin Moderation & Approvals (`server/src/controllers/adminController.js`)**:
+  - Protected under `requireAuth` and `requireRole(ROLES.ADMIN)`.
+  - `GET /api/admin/vendors`: Filterable list of vendors with approval status filter (`pending`, `approved`, `rejected`, `suspended`), search, and pagination.
+  - `GET /api/admin/vendors/:id`: Detailed vendor profile with linked user details.
+  - `PATCH /api/admin/vendors/:id/approve`: Approves pending vendor and logs `ADMIN_APPROVED_VENDOR` audit log.
+  - `PATCH /api/admin/vendors/:id/reject`: Rejects application with required reason and logs `ADMIN_REJECTED_VENDOR` audit log.
+  - `PATCH /api/admin/vendors/:id/suspend`: Suspends merchant and deactivates all active catalog products.
+  - `PATCH /api/admin/vendors/:id/commission`: Adjusts platform commission rate with audit trail.
+  - `GET /api/admin/audit-logs`: Immutable historical log of sensitive administrative events.
+  - `GET /api/admin/overview`: Marketplace metrics (Total Revenue, Total Orders, Active Vendors, Customers, Active Products).
+- **Zod Validation**:
+  - `applyVendorSchema`, `updateStoreProfileSchema`, `updateCommissionSchema`, `rejectVendorSchema`.
 
 ### 2. Verification Commands Executed & Results
 - **Automated Tests**:
@@ -53,19 +50,19 @@
   - `server/tests/health.test.js` (3 tests passed)
   - `server/tests/models.test.js` (6 tests passed)
   - `server/tests/auth.test.js` (8 tests passed)
+  - `server/tests/vendor.test.js` (9 tests passed)
   - `client/src/tests/App.test.jsx` (2 tests passed)
-  - Result: **19/19 Automated Tests Passed** (Exit code 0).
-- **Client Production Build**:
-  ```bash
-  npm run build
-  ```
-  - Vite generated production bundle in 6.30s (Exit code 0).
+  - Result: **28/28 Automated Tests Passed** (Exit code 0).
 
 ---
 
-## Phase 4 Scope (Next Up)
-- Vendor applications and admin approval queue.
-- Store profile customization (logo, banner, description, contact details).
-- Admin endpoints: `/api/admin/vendors/pending`, `/api/admin/vendors/:id/approve`, `/api/admin/vendors/:id/reject`, `/api/admin/vendors/:id/suspend`.
-- Audit logging for all vendor moderation actions.
-- Vendor portal route guard and status banner.
+## Phase 5 Scope (Next Up)
+- Product catalog router and controllers (`/api/products`, `/api/categories`).
+- Public catalog faceted search: full-text keyword search, category slug filter, price range (min/max in paise), rating filter, vendor filter, sorting (`price-asc`, `price-desc`, `newest`, `rating`), pagination.
+- Vendor Product CRUD:
+  - Add product with specifications, tags, stock, integer paise price.
+  - Update product with vendor ownership enforcement (Vendor A cannot modify Vendor B's products).
+  - Deactivate/activate product.
+- Image upload adapter with local storage fallback and Cloudinary configuration.
+- Categories listing with product counts.
+- Automated tests for product ownership, faceted search, and category management.
