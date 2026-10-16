@@ -14,6 +14,9 @@ import vendorRoutes from './routes/vendorRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import productRoutes from './routes/productRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
+import wishlistRoutes from './routes/wishlistRoutes.js';
+import addressRoutes from './routes/addressRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,6 +100,15 @@ app.use('/api/categories', categoryRoutes);
 
 // Product Catalog & Management Routes
 app.use('/api/products', productRoutes);
+
+// Cart & Shopping Routes
+app.use('/api/cart', cartRoutes);
+
+// Wishlist Routes
+app.use('/api/wishlist', wishlistRoutes);
+
+// Address Management Routes
+app.use('/api/addresses', addressRoutes);
 
 // Root welcome
 app.get('/', (req, res) => {
