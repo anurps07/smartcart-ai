@@ -7,9 +7,16 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/authRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import productRoutes from './routes/productRoutes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -55,6 +62,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// Serve static uploads
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
+
 // Request logging in development
 if (env.NODE_ENV !== 'test') {
   app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
@@ -81,6 +91,12 @@ app.use('/api/vendors', vendorRoutes);
 
 // Admin Routes
 app.use('/api/admin', adminRoutes);
+
+// Category Routes
+app.use('/api/categories', categoryRoutes);
+
+// Product Catalog & Management Routes
+app.use('/api/products', productRoutes);
 
 // Root welcome
 app.get('/', (req, res) => {

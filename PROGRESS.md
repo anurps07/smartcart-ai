@@ -8,8 +8,8 @@
 | **Phase 2** | MongoDB connection, models & seed data | **COMPLETED** | Verified (11/11 tests passing, DB seeded, Admin CLI verified, Git pushed) |
 | **Phase 3** | Authentication, sessions & roles (RBAC) | **COMPLETED** | Verified (19/19 tests passing, login/register UI live, Git pushed) |
 | **Phase 4** | Vendor applications & admin approval queue | **COMPLETED** | Verified (28/28 tests passing, approval workflow & audit logs live, Git pushed) |
-| **Phase 5** | Product catalog, media upload & faceted search | **Pending** | Planned next |
-| **Phase 6** | Cart, wishlist & shipping addresses | Pending | Planned |
+| **Phase 5** | Product catalog, media upload & faceted search | **COMPLETED** | Verified (39/39 tests passing, ownership enforcement & faceted queries live, Git pushed) |
+| **Phase 6** | Cart, wishlist & shipping addresses | **Pending** | Planned next |
 | **Phase 7** | Inventory-safe checkout & multi-vendor orders | Pending | Planned |
 | **Phase 8** | Razorpay test payment integration & webhooks | Pending | Planned |
 | **Phase 9** | Buyer, vendor & admin dashboards (UI/UX) | Pending | Planned |
@@ -20,27 +20,27 @@
 
 ---
 
-## Phase 4 Execution & Verification Summary
+## Phase 5 Execution & Verification Summary
 
 ### 1. Modules Implemented
-- **Vendor Workflows (`server/src/controllers/vendorController.js`)**:
-  - `POST /api/vendors/apply`: Allows customer/buyer accounts to submit a merchant application with unique slug generation and role upgrade.
-  - `GET /api/vendors/my-store`: Retrieves store details, verification status, and product count for the authenticated vendor.
-  - `PUT /api/vendors/my-store`: Updates store profile information with store name uniqueness checks.
-  - `GET /api/vendors`: Public endpoint returning approved marketplace merchants.
-  - `GET /api/vendors/store/:slug`: Public merchant showcase returning store profile and active catalog.
-- **Admin Moderation & Approvals (`server/src/controllers/adminController.js`)**:
-  - Protected under `requireAuth` and `requireRole(ROLES.ADMIN)`.
-  - `GET /api/admin/vendors`: Filterable list of vendors with approval status filter (`pending`, `approved`, `rejected`, `suspended`), search, and pagination.
-  - `GET /api/admin/vendors/:id`: Detailed vendor profile with linked user details.
-  - `PATCH /api/admin/vendors/:id/approve`: Approves pending vendor and logs `ADMIN_APPROVED_VENDOR` audit log.
-  - `PATCH /api/admin/vendors/:id/reject`: Rejects application with required reason and logs `ADMIN_REJECTED_VENDOR` audit log.
-  - `PATCH /api/admin/vendors/:id/suspend`: Suspends merchant and deactivates all active catalog products.
-  - `PATCH /api/admin/vendors/:id/commission`: Adjusts platform commission rate with audit trail.
-  - `GET /api/admin/audit-logs`: Immutable historical log of sensitive administrative events.
-  - `GET /api/admin/overview`: Marketplace metrics (Total Revenue, Total Orders, Active Vendors, Customers, Active Products).
+- **Public Product Catalog & Faceted Search (`server/src/controllers/productController.js`)**:
+  - `GET /api/products`: Full-text and regex keyword search, category filtering (by slug or ObjectId), vendor filtering, integer paise price bounds (`$gte`, `$lte`), minimum rating filter, stock availability filter, sorting (`price-asc`, `price-desc`, `rating`, `popular`, `newest`), pagination.
+  - `GET /api/products/slug/:slug`: Product detail endpoint with populated category and vendor details, and automated calculation of related category recommendations.
+- **Categories Architecture (`server/src/controllers/categoryController.js`)**:
+  - `GET /api/categories`: Public categories list with MongoDB aggregation calculating live product counts per category.
+  - `GET /api/categories/:slug`: Specific category details.
+  - `POST /api/categories`: Admin-guarded category creation with audit logging.
+  - `PUT /api/categories/:id`: Admin category updates.
+- **Vendor Product CRUD & Ownership Guard**:
+  - `GET /api/products/my-products`: Authenticated and approved vendor inventory management list.
+  - `POST /api/products`: Validated product creation with specifications array, tags, images, stock, and integer paise price.
+  - `PUT /api/products/:id`: Strict resource ownership check. Strictly returns `403 Forbidden` if another vendor attempts to tamper with or modify a product they do not own.
+  - `DELETE /api/products/:id`: Soft deletion (deactivation) with ownership verification.
+- **Media Upload Service (`server/src/services/storageService.js`)**:
+  - Multer configuration validating mime types (`image/jpeg`, `image/png`, `image/webp`, `image/gif`) and restricting file size to 5MB.
+  - Static file serving at `/uploads` with local disk persistence and Cloudinary adapter fallback.
 - **Zod Validation**:
-  - `applyVendorSchema`, `updateStoreProfileSchema`, `updateCommissionSchema`, `rejectVendorSchema`.
+  - `createProductSchema`, `updateProductSchema`, `createCategorySchema`.
 
 ### 2. Verification Commands Executed & Results
 - **Automated Tests**:
@@ -51,18 +51,20 @@
   - `server/tests/models.test.js` (6 tests passed)
   - `server/tests/auth.test.js` (8 tests passed)
   - `server/tests/vendor.test.js` (9 tests passed)
+  - `server/tests/product.test.js` (11 tests passed)
   - `client/src/tests/App.test.jsx` (2 tests passed)
-  - Result: **28/28 Automated Tests Passed** (Exit code 0).
+  - Result: **39/39 Automated Tests Passed** (Exit code 0).
 
 ---
 
-## Phase 5 Scope (Next Up)
-- Product catalog router and controllers (`/api/products`, `/api/categories`).
-- Public catalog faceted search: full-text keyword search, category slug filter, price range (min/max in paise), rating filter, vendor filter, sorting (`price-asc`, `price-desc`, `newest`, `rating`), pagination.
-- Vendor Product CRUD:
-  - Add product with specifications, tags, stock, integer paise price.
-  - Update product with vendor ownership enforcement (Vendor A cannot modify Vendor B's products).
-  - Deactivate/activate product.
-- Image upload adapter with local storage fallback and Cloudinary configuration.
-- Categories listing with product counts.
-- Automated tests for product ownership, faceted search, and category management.
+## Phase 6 Scope (Next Up)
+- Cart management (`/api/cart`):
+  - Add to cart with real-time inventory stock checks.
+  - Update quantities (rejects requested quantity > available stock).
+  - Remove from cart and clear cart.
+  - Sync cart prices and stock availability dynamically against verified database records.
+- Wishlist management (`/api/wishlist`):
+  - Toggle product in wishlist, get buyer's wishlist items with product details.
+- Address management (`/api/addresses`):
+  - Buyer address CRUD with `isDefault` toggle and address validation.
+- Automated tests for cart stock enforcement, wishlist toggle, and address isolation.
