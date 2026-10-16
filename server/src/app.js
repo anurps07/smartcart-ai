@@ -7,6 +7,8 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
+import authRoutes from './routes/authRoutes.js';
+
 const app = express();
 
 // Security HTTP headers
@@ -68,6 +70,9 @@ app.get('/api/health', (req, res) => {
     uptime: process.uptime(),
   });
 });
+
+// Authentication Routes
+app.use('/api/auth', authRoutes);
 
 // Root welcome
 app.get('/', (req, res) => {

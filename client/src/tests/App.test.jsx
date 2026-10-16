@@ -6,18 +6,29 @@ import App from '../App';
 // Mock api client
 vi.mock('../api/client', () => ({
   default: {
-    get: vi.fn(() =>
-      Promise.resolve({
-        data: {
-          success: true,
-          status: 'ok',
-          service: 'SmartCart AI API',
-          version: '1.0.0',
-          environment: 'development',
-          uptime: 42,
-        },
-      })
-    ),
+    get: vi.fn((url) => {
+      if (url === '/health') {
+        return Promise.resolve({
+          data: {
+            success: true,
+            status: 'ok',
+            service: 'SmartCart AI API',
+            version: '1.0.0',
+            environment: 'development',
+            uptime: 42,
+          },
+        });
+      }
+      if (url === '/auth/me') {
+        return Promise.resolve({
+          data: {
+            success: false,
+          },
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    }),
+    post: vi.fn(),
   },
 }));
 
@@ -33,11 +44,12 @@ describe('SmartCart AI Frontend App', () => {
     });
   });
 
-  it('renders system diagnostics cards and phase roadmap', async () => {
+  it('renders system diagnostics cards and navigation controls', async () => {
     render(<App />);
     expect(screen.getByText(/Backend & Service Diagnostic/i)).toBeInTheDocument();
     expect(screen.getByText(/Project Architecture Roadmap/i)).toBeInTheDocument();
-    expect(screen.getByText(/Phase 1 of 13 In Progress/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sign In/i)).toBeInTheDocument();
+    expect(screen.getByText(/Register/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText(/Backend Response:/i)).toBeInTheDocument();

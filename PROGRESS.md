@@ -6,8 +6,8 @@
 | :--- | :--- | :--- | :--- |
 | **Phase 1** | Workspace, project structure, frontend & backend startup | **COMPLETED** | Verified (5/5 tests passing, production build clean, Git committed & pushed) |
 | **Phase 2** | MongoDB connection, models & seed data | **COMPLETED** | Verified (11/11 tests passing, DB seeded, Admin CLI verified, Git pushed) |
-| **Phase 3** | Authentication, sessions & roles (RBAC) | **Pending** | Planned next |
-| **Phase 4** | Vendor applications & admin approval queue | Pending | Planned |
+| **Phase 3** | Authentication, sessions & roles (RBAC) | **COMPLETED** | Verified (19/19 tests passing, login/register UI live, Git pushed) |
+| **Phase 4** | Vendor applications & admin approval queue | **Pending** | Planned next |
 | **Phase 5** | Product catalog, media upload & faceted search | Pending | Planned |
 | **Phase 6** | Cart, wishlist & shipping addresses | Pending | Planned |
 | **Phase 7** | Inventory-safe checkout & multi-vendor orders | Pending | Planned |
@@ -20,56 +20,52 @@
 
 ---
 
-## Phase 2 Execution & Verification Summary
+## Phase 3 Execution & Verification Summary
 
-### 1. Database Schemas Implemented
-- **Financial Precision Standard**: All monetary values (`price`, `originalPrice`, `subtotal`, `taxAmount`, `shippingFee`, `totalAmount`, `commissionAmount`, `vendorPayout`, `refundAmount`) are strictly enforced as **integer paise** (1 INR = 100 paise) with Mongoose integer validators to eliminate floating-point rounding errors.
-- **13 Mongoose Models Created in `server/src/models/`**:
-  1. `User.js` - Name, normalized lowercase email, bcrypt `passwordHash`, role (`buyer`, `vendor`, `admin`), active status, `comparePassword()` method.
-  2. `Vendor.js` - `userId`, unique `storeName`, `slug`, description, contact info, `approvalStatus` (`pending`, `approved`, `rejected`, `suspended`), `commissionRate`.
-  3. `Category.js` - Category name, unique `slug`, description, Lucide icon name, display order.
-  4. `Product.js` - `vendorId`, `categoryId`, name, unique `slug`, description, integer paise `price`, `stock`, `images`, specifications array, text index (`name`, `tags`, `description`), and compound indexes for faceted search.
-  5. `Cart.js` - Unique `buyerId`, validated items array with minimum quantity 1.
-  6. `Wishlist.js` - Unique `buyerId` referencing array of products.
-  7. `Address.js` - Recipient, phone, street, city, state, postalCode, country, `isDefault` flag.
-  8. `Order.js` - Multi-vendor order design:
-     - Parent order for buyer with global status and integer paise totals.
-     - Segregated `vendorSubOrders` array with purchase-time item snapshots, vendor commission calculation, vendor payout, and fulfillment status history.
-  9. `Payment.js` - Gateway order ID, payment ID, signature, integer paise amount, verification data snapshot.
-  10. `Review.js` - Verified purchase review linked to `buyerId`, `productId`, and `orderId`, integer ratings (1–5).
-  11. `Notification.js` - In-app notification with recipient ID, event type, and read tracking.
-  12. `PriceAlert.js` - Target price drop notifications with unique buyer/product constraint.
-  13. `AuditLog.js` - Immutable audit log for sensitive administrator and platform events.
+### 1. Modules Implemented
+- **Backend Auth Architecture**:
+  - `server/src/utils/token.js`: Secure JWT signing (`signToken`), verification (`verifyToken`), and cookie strategy (`setAuthCookie` with `httpOnly`, `sameSite`, and production `secure` flags).
+  - `server/src/validations/authValidation.js`: Strict Zod request schemas. Restricts public self-registration to `buyer` and `vendor` only (strictly rejects any attempt to self-assign `admin` role).
+  - `server/src/middleware/auth.js`:
+    - `requireAuth`: Header Bearer or HttpOnly cookie token extraction, user validation, account active check, attached `req.user` & `req.vendor`.
+    - `requireRole(...roles)`: Role-based authorization guard returning 403 with detailed message.
+    - `requireVendorApproved`: Guard ensuring vendor store exists and `approvalStatus === 'approved'`.
+    - `optionalAuth`: Graceful authentication for public browsing.
+  - `server/src/controllers/authController.js`:
+    - `register`: Validates duplicate email, hashes with bcrypt (10 rounds), creates linked pending `Vendor` profile if vendor selected, signs JWT, logs vendor application audit event.
+    - `login`: Password verification with `user.comparePassword()`, updates `lastLogin`, generates JWT and returns safe user object.
+    - `getMe`: Returns authenticated user profile and vendor store.
+    - `logout`: Clears authentication cookie.
+    - `updateProfile`: Allows name and password changes with current password verification.
+  - `server/src/routes/authRoutes.js`: Mounted at `/api/auth`.
+- **Frontend Auth Integration**:
+  - `client/src/context/AuthContext.jsx`: Global authentication provider with session restoration from localStorage and `/api/auth/me`.
+  - `client/src/components/common/ProtectedRoute.jsx`: Role-aware and vendor-approval-aware route guard.
+  - `client/src/pages/public/Login.jsx`: Modern sign-in page with quick 1-click demo switcher for Admin (`admin@smartcart.com`), Vendor (`techworld@smartcart.com`), and Buyer (`buyer@smartcart.com`).
+  - `client/src/pages/public/Register.jsx`: Interactive registration with buyer/vendor role selection and instant validation.
+  - `client/src/App.jsx`: Updated with React Router, AuthProvider, and top navigation reflecting live session states.
 
-### 2. Seeds & Admin Bootstrap Scripts
-- `server/src/seeds/seed.js`: Clears and populates 5 realistic categories, 4 vendors (3 approved, 1 pending), 8 rich products with specifications and image URLs, saved addresses, carts, and wishlists.
-- `server/src/seeds/bootstrapAdmin.js`: Secure CLI-only administrator bootstrap protected by `ADMIN_BOOTSTRAP_SECRET`.
-
-### 3. Verification Commands Executed & Results
-- **Database Seeding**:
-  ```bash
-  npm run seed
-  ```
-  - Result: Seeded 8 products across 5 categories, 3 approved vendors, 1 pending vendor, demo buyer, and demo vendor.
-- **Admin Bootstrap CLI**:
-  ```bash
-  npm run bootstrap:admin
-  ```
-  - Result: Successfully created/updated `admin@smartcart.com` with role `admin` and audit log entry.
+### 2. Verification Commands Executed & Results
 - **Automated Tests**:
   ```bash
   npm test
   ```
   - `server/tests/health.test.js` (3 tests passed)
   - `server/tests/models.test.js` (6 tests passed)
+  - `server/tests/auth.test.js` (8 tests passed)
   - `client/src/tests/App.test.jsx` (2 tests passed)
-  - Result: **11/11 Automated Tests Passed** (Exit code 0).
+  - Result: **19/19 Automated Tests Passed** (Exit code 0).
+- **Client Production Build**:
+  ```bash
+  npm run build
+  ```
+  - Vite generated production bundle in 6.30s (Exit code 0).
 
 ---
 
-## Phase 3 Scope (Next Up)
-- Authentication router and controllers (`/api/auth/register`, `/api/auth/login`, `/api/auth/me`, `/api/auth/logout`).
-- JWT token signing, verification, and cookie/bearer authorization middleware.
-- Role-based authorization middleware (`requireAuth`, `requireRole('vendor')`, `requireRole('admin')`).
-- Zod request validation schemas for authentication.
-- Automated auth tests (duplicate registration, invalid password, token expiry, role guards).
+## Phase 4 Scope (Next Up)
+- Vendor applications and admin approval queue.
+- Store profile customization (logo, banner, description, contact details).
+- Admin endpoints: `/api/admin/vendors/pending`, `/api/admin/vendors/:id/approve`, `/api/admin/vendors/:id/reject`, `/api/admin/vendors/:id/suspend`.
+- Audit logging for all vendor moderation actions.
+- Vendor portal route guard and status banner.

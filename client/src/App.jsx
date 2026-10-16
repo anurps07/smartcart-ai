@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { 
   ShoppingBag, 
   Sparkles, 
@@ -13,15 +14,24 @@ import {
   ArrowRight,
   ExternalLink,
   Layers,
-  Activity
+  Activity,
+  User as UserIcon,
+  LogOut,
+  LogIn
 } from 'lucide-react';
 import api from './api/client';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './pages/public/Login';
+import Register from './pages/public/Register';
 
-export default function App() {
+function MarketplaceHome() {
   const [healthData, setHealthData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastChecked, setLastChecked] = useState(null);
+
+  const { user, isAuthenticated, role, logout } = useAuth();
+  const navigate = useNavigate();
 
   const fetchHealth = async () => {
     setLoading(true);
@@ -43,10 +53,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Top Notification / Brand Bar */}
+      {/* Top Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <Link to="/" className="flex items-center space-x-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
               <ShoppingBag className="h-5 w-5" />
             </div>
@@ -61,21 +71,54 @@ export default function App() {
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">AI-Powered Multi-Vendor Marketplace</p>
             </div>
-          </div>
+          </Link>
 
           <div className="flex items-center space-x-3">
-            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-100 text-xs text-slate-600 font-medium">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Phase 1 Initialized</span>
-            </div>
             <button
               onClick={fetchHealth}
               disabled={loading}
-              className="inline-flex items-center space-x-1.5 text-xs font-medium text-slate-700 hover:text-brand-600 bg-white border border-slate-200 hover:border-brand-300 px-3 py-1.5 rounded-lg shadow-sm transition-all"
+              className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-medium text-slate-700 hover:text-brand-600 bg-white border border-slate-200 hover:border-brand-300 px-3 py-1.5 rounded-lg shadow-sm transition-all"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-brand-600' : ''}`} />
               <span>{loading ? 'Checking...' : 'Ping API'}</span>
             </button>
+
+            {isAuthenticated ? (
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                  <div className="h-6 w-6 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold uppercase">
+                    {user?.name?.charAt(0) || 'U'}
+                  </div>
+                  <div className="text-left hidden md:block">
+                    <p className="text-xs font-bold text-slate-800 leading-tight">{user?.name}</p>
+                    <p className="text-[10px] text-brand-600 font-semibold capitalize leading-none">{role}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={logout}
+                  title="Sign Out"
+                  className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center space-x-1 text-xs font-semibold text-slate-700 hover:text-brand-600 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <LogIn className="h-3.5 w-3.5" />
+                  <span>Sign In</span>
+                </Link>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center space-x-1 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 px-3.5 py-1.5 rounded-lg shadow-sm transition-all"
+                >
+                  <span>Register</span>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -87,7 +130,7 @@ export default function App() {
           <div className="relative z-10 max-w-3xl space-y-4">
             <div className="inline-flex items-center space-x-2 bg-brand-500/20 border border-brand-400/30 px-3 py-1 rounded-full text-xs font-medium text-brand-300">
               <Sparkles className="h-3.5 w-3.5 text-brand-300" />
-              <span>Full-Stack Architecture & Multi-Vendor Engine</span>
+              <span>Multi-Vendor Architecture & RBAC Active</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
               AI-Powered Multi-Vendor Marketplace Platform
@@ -96,12 +139,35 @@ export default function App() {
               SmartCart AI integrates multi-vendor product catalogues, inventory-safe split orders, 
               Razorpay payment verification, and an intelligent database-grounded AI shopping assistant.
             </p>
+
+            <div className="pt-2 flex flex-wrap gap-3">
+              {isAuthenticated ? (
+                <div className="inline-flex items-center space-x-2 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 px-4 py-2 rounded-xl text-xs font-semibold">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Logged in as {user?.name} ({role})</span>
+                </div>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center space-x-2 bg-brand-600 hover:bg-brand-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg transition-all"
+                  >
+                    <span>Test Login Portfolios</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="inline-flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                  >
+                    <span>Become a Vendor</span>
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
-          
-          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial-gradient from-brand-500/10 to-transparent pointer-events-none"></div>
         </div>
 
-        {/* Live System Health Card */}
+        {/* Live System Health Diagnostic */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-soft">
           <div className="flex items-center justify-between pb-4 border-b border-slate-100">
             <div className="flex items-center space-x-2.5">
@@ -119,7 +185,7 @@ export default function App() {
           </div>
 
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Express Server Card */}
+            {/* Express Server */}
             <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Express REST</span>
@@ -143,7 +209,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* MongoDB Service Card */}
+            {/* MongoDB Service */}
             <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">MongoDB Database</span>
@@ -152,28 +218,28 @@ export default function App() {
               <div className="mt-3">
                 <div className="flex items-center space-x-1.5 text-emerald-600 text-sm font-semibold">
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>v8.2.2 Active</span>
+                  <span>13 Models Seeded</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Port 27017 Connected</p>
+                <p className="text-xs text-slate-500 mt-1">Paise-safe financial schemas</p>
               </div>
             </div>
 
-            {/* Security Layer Card */}
+            {/* Authentication Suite */}
             <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Security Suite</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Auth & RBAC</span>
                 <ShieldCheck className="h-4 w-4 text-brand-600" />
               </div>
               <div className="mt-3">
                 <div className="flex items-center space-x-1.5 text-emerald-600 text-sm font-semibold">
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>Helmet & Rate Limit</span>
+                  <span>JWT & Roles Active</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">CORS & CSP Active</p>
+                <p className="text-xs text-slate-500 mt-1">Buyer / Vendor / Admin</p>
               </div>
             </div>
 
-            {/* AI Engine Card */}
+            {/* AI Engine */}
             <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">AI Engine</span>
@@ -184,7 +250,7 @@ export default function App() {
                   <Sparkles className="h-4 w-4" />
                   <span>Adapter Ready</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Deterministic DB Fallback</p>
+                <p className="text-xs text-slate-500 mt-1">Grounded catalog fallback</p>
               </div>
             </div>
           </div>
@@ -201,46 +267,49 @@ export default function App() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">Project Architecture Roadmap</h2>
-            <span className="text-xs font-medium text-slate-500">Phase 1 of 13 In Progress</span>
+            <span className="text-xs font-medium text-slate-500">Phase 3 Complete</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { num: 1, title: 'Workspace & Startup', desc: 'Monorepo, Express REST, React Vite, Tailwind CSS', active: true, done: false },
-              { num: 2, title: 'Database & Models', desc: '13 indexed Mongoose schemas, paise-safe financial precision', active: false, done: false },
-              { num: 3, title: 'Auth & RBAC', desc: 'JWT, bcrypt hashing, Buyer / Vendor / Admin roles', active: false, done: false },
-              { num: 4, title: 'Vendor Applications', desc: 'Application submission, store setup & admin moderation', active: false, done: false },
-              { num: 5, title: 'Catalog & Search', desc: 'Faceted search, category filters, product CRUD & images', active: false, done: false },
-              { num: 6, title: 'Cart, Wishlist, Address', desc: 'Inventory-verified cart, addresses & wishlist storage', active: false, done: false },
-              { num: 7, title: 'Multi-Vendor Checkout', desc: 'Atomic stock reservation, parent & vendor sub-orders', active: false, done: false },
-              { num: 8, title: 'Razorpay Test Payments', desc: 'HMAC verification, webhooks, idempotency & refund states', active: false, done: false },
-              { num: 9, title: 'Role Dashboards', desc: 'Buyer order tracking, Vendor fulfillment & Admin control', active: false, done: false },
-              { num: 10, title: 'SmartCart AI Assistant', desc: 'Natural language queries grounded in real MongoDB catalog', active: false, done: false },
-              { num: 11, title: 'Real-Time Notifications', desc: 'Socket.IO rooms, order events & price drop alerts', active: false, done: false },
-              { num: 12, title: 'Automated Tests & QA', desc: 'Vitest, Supertest, concurrency checks & security audit', active: false, done: false },
-              { num: 13, title: 'Git & Deployment Guide', desc: 'GitHub repo push, documentation & deployment steps', active: false, done: false },
+              { num: 1, title: 'Workspace & Startup', desc: 'Monorepo, Express REST, React Vite, Tailwind CSS', done: true },
+              { num: 2, title: 'Database & Models', desc: '13 indexed Mongoose schemas, paise-safe financial precision', done: true },
+              { num: 3, title: 'Auth & RBAC', desc: 'JWT, bcrypt hashing, Buyer / Vendor / Admin roles', done: true, active: true },
+              { num: 4, title: 'Vendor Applications', desc: 'Application submission, store setup & admin moderation', done: false },
+              { num: 5, title: 'Catalog & Search', desc: 'Faceted search, category filters, product CRUD & images', done: false },
+              { num: 6, title: 'Cart, Wishlist, Address', desc: 'Inventory-verified cart, addresses & wishlist storage', done: false },
+              { num: 7, title: 'Multi-Vendor Checkout', desc: 'Atomic stock reservation, parent & vendor sub-orders', done: false },
+              { num: 8, title: 'Razorpay Test Payments', desc: 'HMAC verification, webhooks, idempotency & refund states', done: false },
+              { num: 9, title: 'Role Dashboards', desc: 'Buyer order tracking, Vendor fulfillment & Admin control', done: false },
+              { num: 10, title: 'SmartCart AI Assistant', desc: 'Natural language queries grounded in real MongoDB catalog', done: false },
+              { num: 11, title: 'Real-Time Notifications', desc: 'Socket.IO rooms, order events & price drop alerts', done: false },
+              { num: 12, title: 'Automated Tests & QA', desc: 'Vitest, Supertest, concurrency checks & security audit', done: false },
+              { num: 13, title: 'Git & Deployment Guide', desc: 'GitHub repo push, documentation & deployment steps', done: false },
             ].map((phase) => (
               <div 
                 key={phase.num} 
                 className={`p-4 rounded-xl border transition-all ${
-                  phase.active 
-                    ? 'border-brand-300 bg-white shadow-soft ring-1 ring-brand-500/20' 
+                  phase.done 
+                    ? 'border-emerald-200 bg-emerald-50/20' 
+                    : phase.active
+                    ? 'border-brand-300 bg-white shadow-soft ring-1 ring-brand-500/20'
                     : 'border-slate-200 bg-white/70'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    phase.active 
-                      ? 'bg-brand-100 text-brand-700' 
+                    phase.done 
+                      ? 'bg-emerald-100 text-emerald-700' 
                       : 'bg-slate-100 text-slate-600'
                   }`}>
                     Phase {phase.num}
                   </span>
-                  {phase.active && (
-                    <span className="text-[11px] font-semibold text-brand-600 uppercase tracking-wider">
-                      Current
+                  {phase.done ? (
+                    <span className="flex items-center space-x-1 text-[11px] font-semibold text-emerald-600">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>Completed</span>
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <h3 className="font-semibold text-slate-800 text-sm mt-2">{phase.title}</h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">{phase.desc}</p>
@@ -262,5 +331,19 @@ export default function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<MarketplaceHome />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
