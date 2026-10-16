@@ -10,8 +10,8 @@
 | **Phase 4** | Vendor applications & admin approval queue | **COMPLETED** | Verified (28/28 tests passing, approval workflow & audit logs live, Git pushed) |
 | **Phase 5** | Product catalog, media upload & faceted search | **COMPLETED** | Verified (39/39 tests passing, ownership enforcement & faceted queries live, Git pushed) |
 | **Phase 6** | Cart, wishlist & shipping addresses | **COMPLETED** | Verified (49/49 tests passing, stock limits & address isolation live, Git pushed) |
-| **Phase 7** | Inventory-safe checkout & multi-vendor orders | **Pending** | Planned next |
-| **Phase 8** | Razorpay test payment integration & webhooks | Pending | Planned |
+| **Phase 7** | Inventory-safe checkout & multi-vendor orders | **COMPLETED** | Verified (55/55 tests passing, atomic stock reservation & multi-vendor sub-orders live, Git pushed) |
+| **Phase 8** | Razorpay test payment integration & webhooks | **Pending** | Planned next |
 | **Phase 9** | Buyer, vendor & admin dashboards (UI/UX) | Pending | Planned |
 | **Phase 10** | AI shopping assistant & hybrid recommendations | Pending | Planned |
 | **Phase 11** | Real-time notifications & price alerts | Pending | Planned |
@@ -20,27 +20,29 @@
 
 ---
 
-## Phase 6 Execution & Verification Summary
+## Phase 7 Execution & Verification Summary
 
 ### 1. Modules Implemented
-- **Cart Management (`server/src/controllers/cartController.js`)**:
-  - `GET /api/cart`: Dynamically recalculates totals in integer paise directly from live MongoDB product documents. Segregates items into multi-vendor order groups with live inventory availability flags.
-  - `POST /api/cart/add`: Enforces strict stock validation. Prevents buyers from adding quantities exceeding current merchant inventory.
-  - `PUT /api/cart/item/:productId`: Validated quantity updates. Rejects requests exceeding stock.
-  - `DELETE /api/cart/item/:productId`: Removes specific item.
-  - `DELETE /api/cart/clear`: Clears cart items.
-- **Wishlist Management (`server/src/controllers/wishlistController.js`)**:
-  - `GET /api/wishlist`: Returns populated wishlist items with stock status and vendor store names.
-  - `POST /api/wishlist/toggle`: Atomic toggle (adds if missing, removes if present).
-  - `DELETE /api/wishlist/:productId`: Removes product from wishlist.
-- **Address Management & Data Isolation (`server/src/controllers/addressController.js`)**:
-  - `GET /api/addresses`: Returns saved buyer addresses with default address prioritized.
-  - `POST /api/addresses`: Creates validated address with automatic default promotion if first address.
-  - `PUT /api/addresses/:id`: Updates address with strict buyer ownership validation (`403 Forbidden` if another buyer attempts modification).
-  - `DELETE /api/addresses/:id`: Deletes address with automatic promotion of next address if default was removed.
-  - `PATCH /api/addresses/:id/default`: Promotes selected address to default while unsetting previous defaults.
+- **Order Orchestration Service (`server/src/services/orderService.js`)**:
+  - `checkoutFromCart`:
+    - Validates cart items against current database products and stock availability.
+    - **Atomic Inventory Reservation**: Conditional stock decrement (`Product.findOneAndUpdate({ _id, stock: { $gte: quantity } }, { $inc: { stock: -quantity } })`).
+    - **Compensation Rollback**: If any single item fails reservation, an automatic compensation loop restores all previously decremented inventory and aborts checkout without overselling.
+    - **Multi-Vendor Sub-Order Generation**: Groups items by vendor, fetches each vendor's commission rate, calculates vendor subtotal, platform commission, and vendor payout in integer paise.
+    - Generates human-readable parent order number and vendor sub-order numbers (e.g., `ORD-YYYYMMDD-XXXX-V1`).
+    - Creates immutable item snapshots (price at purchase, SKU, vendor ID, name, image) and address snapshots.
+    - Clears buyer's cart upon successful order creation.
+  - `releaseReservedStock`: Restores reserved inventory when an order or sub-order is cancelled.
+- **Order Controller (`server/src/controllers/orderController.js`)**:
+  - `POST /api/orders/checkout`: Initiates inventory-safe checkout.
+  - `GET /api/orders`: Buyer order tracking history.
+  - `GET /api/orders/:id`: Detailed order inspection with strict buyer ownership isolation (`403 Forbidden` if another user attempts access).
+  - `PATCH /api/orders/:id/cancel`: Buyer order cancellation with automated inventory restocking.
+  - `GET /api/orders/vendor/sub-orders`: Vendor-scoped fulfillment queue (returns ONLY items belonging to the authenticated merchant).
+  - `PATCH /api/orders/vendor/sub-orders/:subOrderId/status`: Updates sub-order fulfillment (`confirmed`, `processing`, `shipped`, `delivered`, `cancelled`) with carrier and tracking number logging, vendor ownership checks (`403 Forbidden` if another vendor tries to update), and parent status synchronization.
+  - `GET /api/orders/admin/all`: Global marketplace order monitoring for administrators.
 - **Zod Validation**:
-  - `addToCartSchema`, `updateCartItemSchema`, `addressSchema`.
+  - `checkoutSchema`, `updateSubOrderStatusSchema`, `cancelOrderSchema`.
 
 ### 2. Verification Commands Executed & Results
 - **Automated Tests**:
@@ -53,20 +55,17 @@
   - `server/tests/vendor.test.js` (9 tests passed)
   - `server/tests/product.test.js` (11 tests passed)
   - `server/tests/cart_wishlist_address.test.js` (10 tests passed)
+  - `server/tests/order.test.js` (6 tests passed)
   - `client/src/tests/App.test.jsx` (2 tests passed)
-  - Result: **49/49 Automated Tests Passed** (Exit code 0).
+  - Result: **55/55 Automated Tests Passed** (Exit code 0).
 
 ---
 
-## Phase 7 Scope (Next Up)
-- Multi-vendor order orchestrator and checkout service:
-  - Atomic stock reservation (`$inc: { stock: -qty }` with condition `$gte: qty`).
-  - Compensation logic if one item in cart fails stock check.
-  - Creation of Parent Order for buyer with integer paise totals (subtotal, tax, shipping, total).
-  - Segregation into independent Vendor Sub-Orders with purchase-time price snapshots, commission calculations, vendor payouts, and initial `pending` fulfillment status.
-  - Cart clearance upon checkout completion.
-- Buyer order tracking & order history (`/api/orders`, `/api/orders/:id`).
-- Vendor sub-order fulfillment (`/api/orders/vendor/sub-orders`, `/api/orders/vendor/sub-orders/:id/status`).
-  - Permitted status transitions (`pending` -> `confirmed` -> `processing` -> `shipped` -> `delivered` / `cancelled`).
-  - Carrier and tracking number logging.
-- Automated tests for atomic reservation, multi-vendor splits, vendor sub-order isolation, and status transitions.
+## Phase 8 Scope (Next Up)
+- Razorpay test integration & webhooks:
+  - Create Razorpay order (`POST /api/payments/create-order`): calculates payable amount in paise directly from order record, creates gateway order.
+  - Verify signature (`POST /api/payments/verify`): cryptographically verifies `razorpay_signature` using HMAC-SHA256 (`crypto.createHmac('sha256', secret)`).
+  - Idempotent Webhook Listener (`POST /api/webhooks/razorpay`): verifies raw body webhook signature using Razorpay webhook secret, transitions order and payment status idempotently.
+  - Payment failure and recovery rules.
+  - Representation of test mode limitations and explicit refund states.
+  - Automated tests for HMAC signature verification, tampering detection, and duplicate webhook idempotency.

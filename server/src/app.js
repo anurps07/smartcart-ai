@@ -17,6 +17,7 @@ import productRoutes from './routes/productRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
 import addressRoutes from './routes/addressRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -109,6 +110,9 @@ app.use('/api/wishlist', wishlistRoutes);
 
 // Address Management Routes
 app.use('/api/addresses', addressRoutes);
+
+// Multi-Vendor Orders & Fulfillment Routes
+app.use('/api/orders', orderRoutes);
 
 // Root welcome
 app.get('/', (req, res) => {
